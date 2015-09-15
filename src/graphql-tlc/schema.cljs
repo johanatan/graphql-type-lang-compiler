@@ -9,7 +9,6 @@
 (def fs (node/require "fs"))
 (def gql (node/require "graphql"))
 (def q (node/require "q"))
-(def zmq (node/require "zmq"))
 
 (def ^:private type-language-parser (insta/parser
   "<S> = TYPE+
