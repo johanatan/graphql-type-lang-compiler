@@ -27,4 +27,4 @@ debug: DEBUG_FLAG=--debug
 debug: run
 
 run: build
-	cd out/frontend && node frontend.js $(DEBUG_FLAG)
+	cd out/graphql-tlc && node graphql-tlc.js $(DEBUG_FLAG)
