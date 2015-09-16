@@ -13,11 +13,14 @@ build:
 	cp resources/* out/graphql-tlc/resources
 	lein cljsbuild once main
 
+ONCE_FLAG=once
 test:
-	lein doo node test once
+	mkdir -p out/test/graphql-tlc/resources
+	cp resources/* out/test/graphql-tlc/resources
+	lein doo node test $(ONCE_FLAG)
 
-watch:
-	lein doo node test
+watch: ONCE_FLAG=
+watch: test
 
 DEBUG_FLAG=
 debug: DEBUG_FLAG=--debug
