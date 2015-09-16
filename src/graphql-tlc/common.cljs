@@ -34,4 +34,3 @@
 (defn single [col] (assert (= 1 (count col))) (first col))
 
 (defn pluralize [noun] (format "%s%s" noun (if (goog.string/endsWith noun "s") "es" "s")))
-
