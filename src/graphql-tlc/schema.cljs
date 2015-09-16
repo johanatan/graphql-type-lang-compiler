@@ -68,10 +68,14 @@
   (consume-enum [this typename constituents])
   (finished [this]))
 
-(defn get-schemas [consumers]
-  (let [schema-str (.toString (.readFileSync fs "resources/schema.gql"))
-        parsed (type-language-parser schema-str)]
-    (common/dbg-banner-print "parsed: %s" parsed)
+(defmulti load-schema #(.existsSync fs %))
+
+(defmethod load-schema true [filename & consumers]
+  (apply load-schema (.toString (.readFileSync fs filename)) consumers))
+
+(defmethod load-schema false [schema-str & consumers]
+  (let [parsed (type-language-parser schema-str)]
+    (common/dbg-banner-print "Parsed: %s" parsed)
     (doseq [p parsed]
       (assert (= :TYPE (get p :tag)) (common/format "Expected :TYPE. Actual: %s" (get p :tag)))
       (let [content (extract-content p)
