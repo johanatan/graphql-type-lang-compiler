@@ -75,9 +75,8 @@
   "Float"   gql.GraphQLFloat
   "Int"     gql.GraphQLInt })
 
-(defn GraphQLConsumer []
-  (let [data-resolver DataServiceResolver
-        type-map (atom primitive-types)
+(defn GraphQLConsumer [data-resolver]
+  (let [type-map (atom primitive-types)
         fields-map (atom {})
         unions (atom [])
         enums (atom {})]
