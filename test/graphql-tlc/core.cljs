@@ -1,3 +1,5 @@
+;; Copyright (c) 2015 Jonathan L. Leonard
+
 (ns graphql-tlc.test.core
   (:require [cljs.test :refer-macros [deftest is]]
             [graphql-tlc.consumer :as consumer]
