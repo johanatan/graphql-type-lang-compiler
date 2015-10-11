@@ -1,0 +1,19 @@
+enum Episode { NEWHOPE, EMPIRE, JEDI }
+
+type Human {
+  id: ID!
+  name: String
+  friends: [Character]
+  appearsIn: [Episode]
+  homePlanet: String
+}
+
+type Droid {
+  id: ID!
+  name: String
+  friends: [Character]
+  appearsIn: [Episode]
+  primaryFunction: String
+}
+
+union Character = Human | Droid

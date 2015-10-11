@@ -12,6 +12,7 @@ build:
 	mkdir -p out/prod/resources
 	cp resources/* out/prod/resources
 	lein cljsbuild once main
+	echo 'module.exports.getSchema = graphql_tlc.consumer.get_schema;' >> out/prod/graphql-tlc.js
 
 ONCE_FLAG=once
 test:
@@ -30,6 +31,5 @@ run: build
 	cd out/graphql-tlc && node graphql-tlc.js $(DEBUG_FLAG)
 
 publish: clean build
-	echo 'module.exports.getSchema = graphql_tlc.consumer.get_schema;' >> out/prod/graphql-tlc.js
 	npm publish
 
