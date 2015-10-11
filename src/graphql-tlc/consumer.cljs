@@ -3,70 +3,16 @@
 (ns graphql-tlc.consumer
   (:require [graphql-tlc.common :as common]
             [graphql-tlc.schema :as schema]
-            [clojure.string :as string]
             [clojure.set :as set]
-            [cljs-uuid-utils.core :as uuid]
             [cljs.nodejs :as node]))
 
 (def ^:private gql (node/require "graphql"))
-(def ^:private q (node/require "q"))
-(def ^:private zmq (node/require "zmq"))
 
 (defprotocol DataResolver
   (query [this typename predicate])
   (create [this typename inputs])
   (modify [this typename inputs])
   (delete [this typename id]))
-
-(def ^:private send-async-message
-  (let [deferred-map (atom {})
-        requester (let [req (.socket zmq "req")]
-            (.connect req "tcp://localhost:5560")
-            (.on req "message" (fn [msg]
-              (common/dbg-file (common/format "Received response: '%s'" msg))
-              (let [[uid res] (string/split msg #"\|")
-                     promis (get @deferred-map uid)]
-                (.resolve promis (.parse js/JSON res))
-                (swap! deferred-map dissoc uid)))))]
-    (fn [message]
-      (let [uid (.toString (uuid/make-random-uuid))
-            msg (common/format "%s:%s" uid message)
-            deferred (.defer q)]
-        (swap! deferred-map assoc uid deferred)
-        (common/dbg-file (common/format "Sending request: '%s'" msg))
-        (.send requester msg)
-        (.-promise deferred)))))
-
-(def ^:private DataServiceConsumer
-  (letfn [(assert-success [promise]
-            (.then promise (fn [json]
-              (assert (= json (.parse js/JSON "{'result':'success'}")), (common/format "Backend failure: %s" json)))))]
-    (let [checked-send-async (comp assert-success send-async-message (partial common/format "$SCHEMA$:%s"))
-          extract-enum-value (fn [m] (let [s (seq m) f (first s)] [(key f) (get (val f) :value)]))
-          messages (atom ())
-          batch-message (fn [obj typename params] (swap! messages conj (common/format "%s|%s|%s" obj typename params)))]
-      (reify schema/TypeConsumer
-        (consume-object [_ typename fields] (batch-message "obj" typename fields))
-        (consume-union [_ typename constituents] (batch-message "union" typename constituents))
-        (consume-enum [_ typename constituents] (batch-message "enum" typename (map extract-enum-value constituents)))
-        (finished [_] (checked-send-async (string/join "!" @messages)))))))
-
-(def ^:private DataServiceResolver
-  (reify DataResolver
-    (query [_ typename predicate]
-      (letfn [(async-query [typename predicate]
-                (send-async-message (common/format "GET|%s|%s" typename predicate)))]
-        (apply async-query (if (not= -1 (.indexOf predicate "$"))
-          (let [[fieldname rst] (string/split predicate #"=")
-                [entity fldval] (string/split rst #"\$")]
-            [entity (common/format "%s=%s" fieldname fldval)])
-          [typename predicate]))))
-    (create [_ typename inputs]
-      (send-async-message (common/format "CREATE|%s|%s" typename inputs)))
-    (modify [_ typename inputs]
-      (send-async-message (common/format "UPDATE|%s|%s" typename inputs)))
-    (delete [_ typename id]
-      (send-async-message (common/format "DELETE|%s|%s" typename id)))))
 
 (def ^:private primitive-types {
   "ID"      gql.GraphQLID
@@ -181,3 +127,24 @@
                 (gql.GraphQLSchema. (clj->js {
                   :query (create-obj-type "RootQuery" (map get-query-descriptors types))
                   :mutation (create-obj-type "RootMutation" (map get-mutations (set/difference types (set @unions))))}))))))))))
+
+(defn- bail [msg] (fn [& _] (throw (js/Error. (common/format "Not implemented: '%s'." msg)))))
+
+(defn get-data-resolver [{:keys [query create modify delete]
+                          :or   {query (bail "query")
+                                 create (bail "create")
+                                 modify (bail "modify")
+                                 delete (bail "delete")}}]
+  (reify DataResolver
+    (query [_ typename predicate] (query typename predicate))
+    (create [_ typename inputs] (create typename inputs))
+    (modify [_ typename inputs] (modify typename inputs))
+    (delete [_ typename id] (delete typename id))))
+
+(defn get-schema [resolver-methods schema-filename-or-contents]
+  (first (second (schema/load-schema schema-filename-or-contents
+    (GraphQLConsumer (get-data-resolver (if (object? resolver-methods) (js->clj resolver-methods) resolver-methods)))))))
+
+(defn noop [] nil)
+
+(set! *main-cli-fn* noop)
