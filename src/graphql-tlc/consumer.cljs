@@ -4,6 +4,7 @@
   (:require [graphql-tlc.common :as common]
             [graphql-tlc.schema :as schema]
             [clojure.set :as set]
+            [clojure.walk :as walk]
             [cljs.nodejs :as node]))
 
 (def ^:private gql (node/require "graphql"))
@@ -143,7 +144,10 @@
 
 (defn get-schema [resolver-methods schema-filename-or-contents]
   (first (second (schema/load-schema schema-filename-or-contents
-    (GraphQLConsumer (get-data-resolver (if (object? resolver-methods) (js->clj resolver-methods) resolver-methods)))))))
+    (GraphQLConsumer (get-data-resolver
+                       (if (object? resolver-methods)
+                         (walk/keywordize-keys (js->clj resolver-methods))
+                         resolver-methods)))))))
 
 (defn noop [] nil)
 
