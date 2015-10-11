@@ -10,6 +10,6 @@ var dataResolver = {"query":  function (typename, predicate) {
 }};
 var starWarsSchema = tlc.getSchema(dataResolver, "./schema.gql");
 
-gql.graphql(starWarsSchema, "{ Human(id: 1000) { id }}").then(function (res) {
+gql.graphql(starWarsSchema, "{ Human(id: 1000) { name }}").then(function (res) {
   console.log(res);
 });

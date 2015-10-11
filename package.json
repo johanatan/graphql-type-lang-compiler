@@ -1,7 +1,7 @@
 {
   "name": "graphql-tlc",
   "preferGlobal": false,
-  "version": "0.9.8",
+  "version": "0.9.10",
   "author": "Jonathan Leonard <johanatan@gmail.com>",
   "description": "A compiler (written in ClojureScript) for GraphQL type language.",
   "contributors": [
