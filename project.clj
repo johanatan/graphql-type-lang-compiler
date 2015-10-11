@@ -18,25 +18,24 @@
       :test {
         :source-paths ["src" "test"]
         :compiler {
-          :output-to "out/test/graphql-tlc/graphql-tlc.js"
-          :output-dir "out/test/graphql-tlc"
+          :output-to "out/test/graphql-tlc.js"
+          :output-dir "out/test"
           :main 'graphql-tlc.runner
           :optimizations :simple
           :pretty-print true
           :target :nodejs
           :hashbang false
           :cache-analysis true
-          :source-map "out/test/graphql-tlc/graphql-tlc.js.map"}}
+          :source-map "out/test/graphql-tlc.js.map"}}
       :main {
         :source-paths ["src"]
         :compiler {
-          :output-to "out/graphql-tlc/graphql-tlc.js"
-          :output-dir "out/graphql-tlc"
+          :output-to "out/prod/graphql-tlc.js"
+          :output-dir "out/prod"
           :optimizations :simple
           :pretty-print true
           :target :nodejs
           :hashbang false
-          :cache-analysis true
-          :source-map "out/graphql-tlc/graphql-tlc.js.map"}}}
-    :test-commands {:unit ["node" :node-runner "out/graphql-tlc/graphql-tlc.js"]}})
+          :cache-analysis true}}}
+    :test-commands {:unit ["node" :node-runner "out/test/graphql-tlc.js"]}})
 

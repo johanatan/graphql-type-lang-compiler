@@ -9,14 +9,14 @@ clean:
 	lein clean
 
 build:
-	mkdir -p out/graphql-tlc/resources
-	cp resources/* out/graphql-tlc/resources
+	mkdir -p out/prod/resources
+	cp resources/* out/prod/resources
 	lein cljsbuild once main
 
 ONCE_FLAG=once
 test:
-	mkdir -p out/test/graphql-tlc/resources
-	cp resources/* out/test/graphql-tlc/resources
+	mkdir -p out/test/resources
+	cp resources/* out/test/resources
 	lein doo node test $(ONCE_FLAG)
 
 watch: ONCE_FLAG=
@@ -28,3 +28,8 @@ debug: run
 
 run: build
 	cd out/graphql-tlc && node graphql-tlc.js $(DEBUG_FLAG)
+
+publish: clean build
+	echo 'module.exports.getSchema = graphql_tlc.consumer.get_schema;' >> out/prod/graphql-tlc.js
+	npm publish
+

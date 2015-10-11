@@ -1,7 +1,7 @@
 {
   "name": "graphql-tlc",
   "preferGlobal": false,
-  "version": "0.9.1",
+  "version": "0.9.8",
   "author": "Jonathan Leonard <johanatan@gmail.com>",
   "description": "A compiler (written in ClojureScript) for GraphQL type language.",
   "contributors": [
@@ -11,7 +11,7 @@
     "type": "git",
     "url": "git://github.com/johanatan/graphql-type-lang-compiler.git"
   },
-  "license": "None",
+  "license": "SEE LICENSE IN <NONE>",
   "dependencies": {
     "npm": ">= 1.1.2",
     "graphql": "0.4.2",
@@ -20,9 +20,10 @@
   "devDependencies": {},
   "optionalDependencies": {},
   "engines": {
-    "node": "0.6 || 0.7 || 0.8"
+    "node": ">= 4.1.1"
   },
   "homepage": "https://github.com/johanatan/graphql-type-lang-compiler",
-  "main": "lib/main.js"
+  "main": "out/prod/graphql-tlc.js",
+  "files": ["out/prod/graphql-tlc.js"]
 }
 
