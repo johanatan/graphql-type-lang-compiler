@@ -44,8 +44,7 @@ facilities for querying (i.e., selecting) & insert, update and delete mutations.
 #### Example
 
 ```javascript
-node --harmony-destructuring
-
+$ node --harmony-destructuring
 > var tlc = require('graphql-tlc');
 > var gql = require('graphql');
 > var albums = [
