@@ -52,7 +52,7 @@ $ node --harmony-destructuring
 ... {'id': 1, 'name': 'Dark Side Of The Moon', 'releaseDate': 'March 1, 1973',
 ...   'artist': 'Pink Floyd'},
 ... {'id': 2, 'name': 'The Beatles', 'releaseDate': 'November 22, 1968',
-...   'artist': 'Beatles'},
+...   'artist': 'The Beatles'},
 ... {'id': 3, 'name': 'The Wall', 'releaseDate': 'Auguest 1, 1982',
 ...   'artist': 'Pink Floyd'}];
 > var dataResolver = {"query":  function (typename, predicate) {
