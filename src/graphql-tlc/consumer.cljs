@@ -131,23 +131,24 @@
 
 (defn- bail [msg] (fn [& _] (throw (js/Error. (common/format "Not implemented: '%s'." msg)))))
 
-(defn get-data-resolver [{:keys [query create modify delete]
-                          :or   {query (bail "query")
-                                 create (bail "create")
-                                 modify (bail "modify")
-                                 delete (bail "delete")}}]
+(defn get-data-resolver [is-js? {:keys [query create modify delete]
+                                 :or   {query (bail "query")
+                                        create (bail "create")
+                                        modify (bail "modify")
+                                        delete (bail "delete")}}]
   (reify DataResolver
     (query [_ typename predicate] (query typename predicate))
-    (create [_ typename inputs] (create typename inputs))
-    (modify [_ typename inputs] (modify typename inputs))
+    (create [_ typename inputs] (create typename (if is-js? (clj->js inputs) inputs)))
+    (modify [_ typename inputs] (modify typename (if is-js? (clj->js inputs) inputs)))
     (delete [_ typename id] (delete typename id))))
 
 (defn get-schema [resolver-methods schema-filename-or-contents]
-  (first (second (schema/load-schema schema-filename-or-contents
-    (GraphQLConsumer (get-data-resolver
-                       (if (object? resolver-methods)
+  (let [is-js? (object? resolver-methods)]
+    (first (second (schema/load-schema schema-filename-or-contents
+    (GraphQLConsumer (get-data-resolver is-js?
+                       (if is-js?
                          (walk/keywordize-keys (js->clj resolver-methods))
-                         resolver-methods)))))))
+                         resolver-methods))))))))
 
 (defn noop [] nil)
 
