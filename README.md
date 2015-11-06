@@ -38,7 +38,7 @@ union Character = Human | Droid
 ```
 
 Given a specification of a data model in GraphQL Type Language, graphql-tlc automatically
-generates the `GraphQLSchema` instance that GraphQL requires (and binds its `resolve` methods
+generates the `GraphQLSchema` instance that GraphQL requires and binds its `resolve` methods
 to a specified set of functions for querying (i.e., selecting) and mutating (i.e., insert,
 update and delete mutations).
 
