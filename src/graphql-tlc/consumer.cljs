@@ -42,8 +42,10 @@
       (get-type [typ is-list? is-not-null?] (modify-type (get @type-map typ) is-list? is-not-null?))
       (get-resolver [datatype is-list? fieldname]
         (if (not (is-primitive? datatype))
-          {:resolve (fn [parent] (if is-list? (clj->js (map (fn [id] (get-by-id datatype id)) (aget parent fieldname)))
-                      (get-by-id datatype (aget parent fieldname))))}))
+          {:resolve (fn [parent]
+                      (if is-list?
+                        (clj->js (map (fn [id] (get-by-id datatype id)) (aget parent fieldname)))
+                        (get-by-id datatype (aget parent fieldname))))}))
       (get-field-spec [[fieldname datatype is-list? is-not-null?]]
         (let [typ (get-type datatype is-list? is-not-null?)
               resolver (get-resolver datatype is-list? fieldname)
@@ -60,7 +62,8 @@
             (assert (not (contains? @fields-map fieldnames))
               (common/format "Duplicate field set: %s" (common/pprint-str fieldnames)))
             (assert (contains? (set fieldnames) "id")
-              (common/format "Type must contain an 'id' field. Fields: %s" (common/pprint-str fieldnames)))
+              (common/format "Type must contain an 'id' field. Fields: %s"
+                (common/pprint-str fieldnames)))
             (swap! type-map assoc typename res)
             (swap! fields-map assoc fieldnames [typename (map rest field-descriptors)])
             (console/log (common/format "Created object type: %s" typename))
