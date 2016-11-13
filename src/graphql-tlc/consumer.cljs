@@ -5,6 +5,7 @@
             [graphql-tlc.schema :as schema]
             [clojure.set :as set]
             [clojure.walk :as walk]
+            [clojure.string]
             [cljs.nodejs :as node]))
 
 (def ^:private gql (node/require "graphql"))
@@ -30,6 +31,9 @@
     (letfn [
       (get-by-id [typename id]
         (query data-resolver typename (common/format "id=%s" (js->clj id))))
+      (get-by-fields [typename fields]
+        (let [msg (clojure.string/join "&" (map #(common/format "%s=%s" (%1 0) (%1 1)) fields))]
+          (query data-resolver typename msg)))
       (is-enum? [typ]
         (contains? (set (keys @enums)) typ))
       (is-primitive? [typ]
@@ -58,7 +62,7 @@
                 descriptors {:name typename :fields (fn [] (clj->js @merged))}
                 res (gql.GraphQLObjectType. (clj->js descriptors))]
             (assert (not (contains? @type-map typename))
-              (common/format "Duplicate type name: %s" typename))
+                    (common/format "Duplicate type name: %s" typename))
             (assert (not (contains? @fields-map fieldnames))
               (common/format "Duplicate field set: %s" (common/pprint-str fieldnames)))
             (assert (contains? (set fieldnames) "id")
@@ -90,14 +94,18 @@
                 union-input-type (gql.GraphQLInputObjectType. (clj->js union-input-type-desc))]
             (letfn [
               (get-query-descriptors [typ]
-                (let [res
-                  [{typ
-                     {:type (get @type-map typ)
-                      :args {:id {:type (gql.GraphQLNonNull. gql.GraphQLID)}}
-                      :resolve (fn [root obj] (get-by-id typ (get (js->clj obj) "id")))}}
-                  {(common/pluralize typ)
-                    {:type (gql.GraphQLList. (get @type-map typ))
-                     :resolve (fn [root] (query data-resolver typ "all()"))}}]]
+                (let [[field-names field-meta] (first (filter (fn [[k v]] (= (v 0) typ)) @fields-map))
+                      zipped (map vector field-names (second field-meta))
+                      with-types (map #(do [(first %1) (apply get-type [(first (second %1)) (second (second %1)) false])]) zipped)
+                      args (apply merge (map #(do {(keyword (%1 0)) {:type (%1 1)}}) with-types))
+                      res
+                        [{typ
+                          {:type (gql.GraphQLList. (get @type-map typ))
+                            :args args
+                            :resolve (fn [root obj] (clj->js (get-by-fields typ (js->clj obj))))}}
+                        {(common/pluralize typ)
+                         {:type (gql.GraphQLList. (get @type-map typ))
+                          :resolve (fn [root] (query data-resolver typ "all()"))}}]]
                   (common/dbg-print "Query descriptors for typename: %s: %s" typ res) res))
               (get-args [typ req-mod?]
                 (letfn [

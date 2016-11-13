@@ -28,7 +28,7 @@ debug: DEBUG_FLAG=--debug
 debug: run
 
 run: build
-	cd out/graphql-tlc && node graphql-tlc.js $(DEBUG_FLAG)
+	cd out/prod/ && node graphql-tlc.js $(DEBUG_FLAG)
 
 publish: clean build
 	npm publish
