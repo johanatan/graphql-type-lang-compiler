@@ -59,9 +59,12 @@ $ node --harmony-destructuring
 ...   console.assert(typename == "Album");
 ...   if (predicate == "all()") return albums;
 ...   else {
-...     var [field, value] = predicate.split("=");
-...     var res = albums.filter(function(elem) { return elem[field] == value; });
-...     return res.length == 1 ? res[0] : res;
+...     var predicates = predicate.split("&");
+...     var filters = predicates.map(function(p) {
+...       var [field, value] = p.split("=");
+...       return function(elem) { return elem[field] == value; };
+...     });
+...     return albums.filter(function(elem) { return filters.every(function(f) { return f(elem); }); });
 ...   }
 ... }, "create": function (typename, inputs) {
 ...   inputs.id = albums.length + 1;
@@ -71,15 +74,50 @@ $ node --harmony-destructuring
 > var schema = tlc.getSchema(dataResolver,
 ... "type Album { id: ID! name: String releaseDate: String artist: String }");
 > var printer = function(res) { console.log(JSON.stringify(res, null, 2)); };
+> gql.graphql(schema, "{ Album(artist: \"Pink Floyd\") { name artist releaseDate } }").then(printer);
+
+{
+  "data": {
+    "Album": [
+      {
+        "name": "Dark Side Of The Moon",
+        "artist": "Pink Floyd",
+        "releaseDate": "March 1, 1973"
+      },
+      {
+        "name": "The Wall",
+        "artist": "Pink Floyd",
+        "releaseDate": "August 1, 1982"
+      }
+    ]
+  }
+}
+
+> gql.graphql(schema, "{ Album(artist: \"Pink Floyd\", name: \"The Wall\") { name artist releaseDate } }").then(printer);
+
+{
+  "data": {
+    "Album": [
+      {
+        "name": "The Wall",
+        "artist": "Pink Floyd",
+        "releaseDate": "August 1, 1982"
+      }
+    ]
+  }
+}
+
 > gql.graphql(schema, "{ Album(id: 2) { name artist releaseDate } }").then(printer);
 
 {
   "data": {
-    "Album": {
-      "name": "The Beatles",
-      "artist": "The Beatles",
-      "releaseDate": "November 22, 1968"
-    }
+    "Album": [
+      {
+        "name": "The Beatles",
+        "artist": "The Beatles",
+        "releaseDate": "November 22, 1968"
+      }
+    ]
   }
 }
 
