@@ -9,6 +9,7 @@
             [cljs.nodejs :as node]))
 
 (def ^:private gql (node/require "graphql"))
+(def ^:private flat (node/require "flat"))
 
 (defprotocol DataResolver
   (query [this typename predicate])
@@ -25,6 +26,7 @@
 
 (defn GraphQLConsumer [data-resolver]
   (let [type-map (atom primitive-types)
+        inputs-map (atom {})
         fields-map (atom {})
         unions (atom [])
         enums (atom {})]
@@ -32,7 +34,8 @@
       (get-by-id [typename id]
         (query data-resolver typename (common/format "id=%s" (js->clj id))))
       (get-by-fields [typename fields]
-        (let [msg (clojure.string/join "&" (map #(common/format "%s=%s" (%1 0) (%1 1)) fields))]
+        (let [msg (clojure.string/join "&" (map #(common/format "%s=%s" %1 (js->clj (aget fields %1)))
+                                                (common/jskeys fields)))]
           (query data-resolver typename msg)))
       (is-enum? [typ]
         (contains? (set (keys @enums)) typ))
@@ -44,6 +47,9 @@
               composed (comp not-null-comb list-comb)
               res (composed typ)] res))
       (get-type [typ is-list? is-not-null?] (modify-type (get @type-map typ) is-list? is-not-null?))
+      (get-input-type [typ is-list? is-not-null?] (if (contains? (set (keys @inputs-map)) typ)
+                                                    (@inputs-map typ)
+                                                    (get-type typ is-list? is-not-null?)))
       (get-resolver [datatype is-list? fieldname]
         (if (not (is-primitive? datatype))
           {:resolve (fn [parent]
@@ -53,7 +59,25 @@
       (get-field-spec [[fieldname datatype is-list? is-not-null?]]
         (let [typ (get-type datatype is-list? is-not-null?)
               resolver (get-resolver datatype is-list? fieldname)
-              res {fieldname (merge {:type typ} resolver)}] res))]
+              res {fieldname (merge {:type typ} resolver)}] res))
+      (convert-to-input-object-field [field]
+        (let [wrappers (atom '())
+              field-type (atom nil)]
+          (loop [ft (.-type field)]
+            (if (.-ofType ft)
+              (do
+                (if (not= (type ft) gql.GraphQLNonNull) ; all fields in our input type are optional
+                  (swap! wrappers conj (.-constructor ft)))
+                (recur (.-ofType ft)))
+              (reset! field-type ft)))
+          (if (not (gql.isInputType @field-type))
+            (reset! field-type (create-input-object @field-type)))
+          (clj->js {:type (reduce (fn [typ clas] (clas. typ)) @field-type @wrappers)})))
+      (input-object-typename [typename] (common/format "%sInput" typename))
+      (create-input-object [object-type]
+        (gql.GraphQLInputObjectType. (clj->js {:name (input-object-typename (.-name object-type))
+                                               :fields (into {} (for [[k v] (js->clj (.getFields object-type))]
+                                                                  [k (convert-to-input-object-field (clj->js v))]))})))]
       (reify schema/TypeConsumer
         (consume-object [_ typename field-descriptors]
           (let [field-specs (map get-field-spec field-descriptors)
@@ -71,7 +95,8 @@
             (swap! type-map assoc typename res)
             (swap! fields-map assoc fieldnames [typename (map rest field-descriptors)])
             (console/log (common/format "Created object type: %s" typename))
-            (get @type-map typename)))
+            (swap! inputs-map assoc typename (create-input-object res))
+            (console/log (common/format "Create input object type: %s for type: %s" (input-object-typename typename) typename))))
         (consume-union [_ typename constituents]
           (let [types (map #(get @type-map %) constituents)
                 descriptor {:name typename :types types
@@ -88,7 +113,7 @@
             (swap! enums assoc typename constituents)
             (console/log (common/format "Created enum type: %s: descriptor: %s" typename descriptor)) [res descriptor]))
         (finished [_]
-          (let [union-input-type-desc { :name (common/format "Union")
+          (let [union-input-type-desc { :name "Union"
                                         :fields { :type { :type (gql.GraphQLNonNull. gql.GraphQLString)}
                                                   :id { :type (gql.GraphQLNonNull. gql.GraphQLID)}}}
                 union-input-type (gql.GraphQLInputObjectType. (clj->js union-input-type-desc))]
@@ -96,13 +121,13 @@
               (get-query-descriptors [typ]
                 (let [[field-names field-meta] (first (filter (fn [[k v]] (= (v 0) typ)) @fields-map))
                       zipped (map vector field-names (second field-meta))
-                      with-types (map #(do [(first %1) (apply get-type [(first (second %1)) (second (second %1)) false])]) zipped)
+                      with-types (map (fn [[k v]] [k (get-input-type (nth v 0) (nth v 1) false)]) zipped)
                       args (apply merge (map #(do {(keyword (%1 0)) {:type (%1 1)}}) with-types))
                       res
                         [{typ
                           {:type (gql.GraphQLList. (get @type-map typ))
-                            :args args
-                            :resolve (fn [root obj] (clj->js (get-by-fields typ (js->clj obj))))}}
+                           :args args
+                           :resolve (fn [root obj] (clj->js (get-by-fields typ (flat obj))))}}
                         {(common/pluralize typ)
                          {:type (gql.GraphQLList. (get @type-map typ))
                           :resolve (fn [root] (query data-resolver typ "all()"))}}]]

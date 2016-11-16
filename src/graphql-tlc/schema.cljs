@@ -9,7 +9,7 @@
 (def fs (node/require "fs"))
 (def gql (node/require "graphql"))
 
-(def ^:private type-language-parser (insta/parser
+(def ^:private grammar
   "<S> = TYPE+
   TYPE = <WS> (OBJECT | UNION | ENUM) <WS>
   <OBJECT> = TYPE_KEYWORD <RWS> IDENTIFIER <WS> <'{'> FIELD+ <WS> <'}'>
@@ -27,7 +27,10 @@
   <ENUM> = ENUM_KEYWORD <RWS> IDENTIFIER <WS> <'{'> <WS> ENUM_VAL COMMA_ENUM_VAL+ <WS> <'}'>
   ENUM_KEYWORD = 'enum'
   ENUM_VAL = IDENTIFIER
-  <COMMA_ENUM_VAL> = <WS> <','> <WS> ENUM_VAL" :output-format :enlive))
+  <COMMA_ENUM_VAL> = <WS> <','> <WS> ENUM_VAL")
+
+(node/enable-util-print!)
+(def ^:private type-language-parser (insta/parser grammar :output-format :enlive))
 
 (defn- extract-content [m] (get m :content))
 (defn- extract-single-content [m] (common/single (extract-content m)))
@@ -76,7 +79,7 @@
   (let [parsed (type-language-parser schema-str)]
     (common/dbg-banner-print "Parsed: %s" parsed)
     (doseq [p parsed]
-      (assert (= :TYPE (get p :tag)) (common/format "Expected :TYPE. Actual: %s" (get p :tag)))
+      (assert (= :TYPE (get p :tag)) (common/format "Expected :TYPE. Actual: %s. Parsed: %s" (get p :tag) p))
       (let [content (extract-content p)
             [impl descriptors] (match [(get (first content) :tag)]
               [:UNION_KEYWORD] [consume-union (get-union-descriptors content)]
