@@ -94,9 +94,10 @@
                 (common/pprint-str fieldnames)))
             (swap! type-map assoc typename res)
             (swap! fields-map assoc fieldnames [typename (map rest field-descriptors)])
-            (console/log (common/format "Created object type: %s" typename))
-            (swap! inputs-map assoc typename (create-input-object res))
-            (console/log (common/format "Create input object type: %s for type: %s" (input-object-typename typename) typename))))
+            (console/log (common/format "Created object type thunk: %s" typename))
+            (swap! inputs-map assoc typename #(create-input-object res))
+            (console/log (common/format "Created input object type thunk: %s for type: %s"
+                                        (input-object-typename typename) typename))))
         (consume-union [_ typename constituents]
           (let [types (map #(get @type-map %) constituents)
                 descriptor {:name typename :types types
@@ -161,6 +162,7 @@
                   (common/dbg-print "Created GraphQLObjectType: %s" descriptor) res))]
               (let [types (set/difference (set (keys @type-map)) (set (keys primitive-types)) (set (keys @enums)))]
                 (common/dbg-print "Created union input type: %s" union-input-type-desc)
+                (reset! inputs-map (into {} (for [[k v] @inputs-map] [k (v)])))
                 (gql.GraphQLSchema. (clj->js {
                   :query (create-obj-type "RootQuery" (map get-query-descriptors types))
                   :mutation (create-obj-type "RootMutation" (map get-mutations (set/difference types (set @unions))))}))))))))))
