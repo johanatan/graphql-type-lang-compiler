@@ -75,7 +75,8 @@
           (clj->js {:type (reduce (fn [typ clas] (clas. typ)) @field-type @wrappers)})))
       (input-object-typename [typename] (common/format "%sInput" typename))
       (create-input-object [object-type]
-        (gql.GraphQLInputObjectType. (clj->js {:name (input-object-typename (.-name object-type))
+        (gql.GraphQLInputObjectType. (clj->js {:name (common/format
+                                                      "%s%s" (input-object-typename (.-name object-type)) (gensym))
                                                :fields (into {} (for [[k v] (js->clj (.getFields object-type))]
                                                                   [k (convert-to-input-object-field (clj->js v))]))})))]
       (reify schema/TypeConsumer
