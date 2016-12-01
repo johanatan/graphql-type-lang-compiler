@@ -60,7 +60,8 @@
         (let [typ (get-type datatype is-list? is-not-null?)
               resolver (get-resolver datatype is-list? fieldname)
               res {fieldname (merge {:type typ} resolver)}] res))
-      (convert-to-input-object-field [field]
+      (input-object-typename [typename] (common/format "%sInput" typename))
+      (convert-to-input-object-field [created field]
         (let [wrappers (atom '())
               field-type (atom nil)]
           (loop [ft (.-type field)]
@@ -70,21 +71,25 @@
                   (swap! wrappers conj (.-constructor ft)))
                 (recur (.-ofType ft)))
               (reset! field-type ft)))
-          (if (not (gql.isInputType @field-type))
-            (reset! field-type (create-input-object @field-type)))
+          (cond
+            (contains? (set (keys created)) @field-type) (reset! field-type (created @field-type))
+            (not (gql.isInputType @field-type)) (reset! field-type (create-input-object created @field-type)))
           (clj->js {:type (reduce (fn [typ clas] (clas. typ)) @field-type @wrappers)})))
-      (input-object-typename [typename] (common/format "%sInput" typename))
-      (create-input-object [object-type]
-        (gql.GraphQLInputObjectType. (clj->js {:name (common/format
-                                                      "%s%s" (input-object-typename (.-name object-type)) (gensym))
-                                               :fields (into {} (for [[k v] (js->clj (.getFields object-type))]
-                                                                  [k (convert-to-input-object-field (clj->js v))]))})))]
+      (create-input-object [created object-type]
+        (let [cell (atom nil)
+              fields #(clj->js
+                       (into {} (for [[k v] (js->clj (.getFields object-type))]
+                                  [k (convert-to-input-object-field (assoc created object-type @cell) (clj->js v))])))
+              res (gql.GraphQLInputObjectType.
+                   (clj->js {:name (common/format "%s%s" (input-object-typename (.-name object-type)) (gensym))
+                             :fields fields}))]
+          (reset! cell res)))]
       (reify schema/TypeConsumer
         (consume-object [_ typename field-descriptors]
           (let [field-specs (map get-field-spec field-descriptors)
                 fieldnames (map first field-descriptors)
                 merged (delay (apply merge field-specs))
-                descriptors {:name typename :fields (fn [] (clj->js @merged))}
+                descriptors {:name typename :fields #(clj->js @merged)}
                 res (gql.GraphQLObjectType. (clj->js descriptors))]
             (assert (not (contains? @type-map typename))
                     (common/format "Duplicate type name: %s" typename))
@@ -96,7 +101,7 @@
             (swap! type-map assoc typename res)
             (swap! fields-map assoc fieldnames [typename (map rest field-descriptors)])
             (console/log (common/format "Created object type thunk: %s" typename))
-            (swap! inputs-map assoc typename #(create-input-object res))
+            (swap! inputs-map assoc typename #(create-input-object {} res))
             (console/log (common/format "Created input object type thunk: %s for type: %s"
                                         (input-object-typename typename) typename))))
         (consume-union [_ typename constituents]

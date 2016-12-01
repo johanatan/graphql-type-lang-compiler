@@ -5,9 +5,12 @@ var labels = [
     {'id': 1, 'name': 'Apple Records', 'founded': '1968'},
     {'id': 2, 'name': 'Harvest Records', 'founded': '1969'}];
 var albums = [
-    {'id': 1, 'name': 'Dark Side Of The Moon', 'releaseDate': 'March 1, 1973', 'artist': 'Pink Floyd', 'label': labels[1]},
-    {'id': 2, 'name': 'The Beatles', 'releaseDate': 'November 22, 1968', 'artist': 'The Beatles', 'label': labels[0]},
-    {'id': 3, 'name': 'The Wall', 'releaseDate': 'August 1, 1982', 'artist': 'Pink Floyd', 'label': labels[1]}];
+    {'id': 1, 'name': 'Dark Side Of The Moon', 'releaseDate': 'March 1, 1973',
+     'artist': 'Pink Floyd', 'label': labels[1]},
+    {'id': 2, 'name': 'The Beatles', 'releaseDate': 'November 22, 1968',
+     'artist': 'The Beatles', 'label': labels[0]},
+    {'id': 3, 'name': 'The Wall', 'releaseDate': 'August 1, 1982',
+     'artist': 'Pink Floyd', 'label': labels[1]}];
 var dataResolver = {"query":  function (typename, predicate) {
   console.assert(typename == "Album");
   if (predicate == "all()") return albums;
@@ -29,9 +32,10 @@ var dataResolver = {"query":  function (typename, predicate) {
   albums.push(inputs);
   return inputs;
 }};
-var schema = tlc.getSchema(dataResolver,
-                           ["type Label { id: ID! name: String founded: String } ",
-                            "type Album { id: ID! name: String releaseDate: String artist: String label: Label }"].join(" "));
+var schema =
+  tlc.getSchema(dataResolver,
+                ["type Label { id: ID! name: String founded: String album: Album } ",
+                 "type Album { id: ID! name: String releaseDate: String artist: String label: Label }"].join(" "));
 var printer = function(res) { console.log(JSON.stringify(res, null, 2)); };
 gql.graphql(schema,
   "{ Album(artist: \"Pink Floyd\", label: { name: \"Harvest Records\" }) { name artist releaseDate } }") .then(printer);
