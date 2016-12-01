@@ -145,7 +145,8 @@
                                             (contains? (set @unions) typ) union-input-type
                                             :else gql.GraphQLID))
                   (get-mutation-arg-type [[typ is-list? is-non-null?]]
-                    (modify-type (or (get primitive-types typ) (get-ref-type typ)) is-list? (if req-mod? is-non-null? false)))]
+                    (modify-type (or (get primitive-types typ) (get-ref-type typ))
+                                 is-list? (if req-mod? is-non-null? false)))]
                   (let [kvs (seq @fields-map)
                         kv (common/single (filter #(= (first (second %)) typ) kvs))
                         pairs (partition 2 (interleave (first kv) (second (second kv))))
@@ -159,8 +160,10 @@
                     :args (into args (if get-args? (get-args typ req-mod?) {}))
                     :resolve (fn [root obj] (resolver data-resolver typ (transform (js->clj obj))))}})]
                   (let [res [(get-mutation "create" create true true identity {})
-                             (get-mutation "update" modify false true identity {:id {:type (gql.GraphQLNonNull. gql.GraphQLID)}})
-                             (get-mutation "delete" delete false false get-id {:id {:type (gql.GraphQLNonNull. gql.GraphQLID)}})]]
+                             (get-mutation "update" modify false true identity
+                                           {:id {:type (gql.GraphQLNonNull. gql.GraphQLID)}})
+                             (get-mutation "delete" delete false false get-id
+                                           {:id {:type (gql.GraphQLNonNull. gql.GraphQLID)}})]]
                     (common/dbg-print "Mutation descriptors for typename: %s: %s" typ res) res)))
               (create-obj-type [name fields]
                 (let [descriptor { :name name :fields (apply merge (flatten fields))}
@@ -169,9 +172,11 @@
               (let [types (set/difference (set (keys @type-map)) (set (keys primitive-types)) (set (keys @enums)))]
                 (common/dbg-print "Created union input type: %s" union-input-type-desc)
                 (reset! inputs-map (into {} (for [[k v] @inputs-map] [k (v)])))
-                (gql.GraphQLSchema. (clj->js {
-                  :query (create-obj-type "RootQuery" (map get-query-descriptors types))
-                  :mutation (create-obj-type "RootMutation" (map get-mutations (set/difference types (set @unions))))}))))))))))
+                (gql.GraphQLSchema.
+                 (clj->js
+                  {:query (create-obj-type "RootQuery" (map get-query-descriptors types))
+                   :mutation
+                   (create-obj-type "RootMutation" (map get-mutations (set/difference types (set @unions))))}))))))))))
 
 (defn- bail [msg] (fn [& _] (throw (js/Error. (common/format "Not implemented: '%s'." msg)))))
 
